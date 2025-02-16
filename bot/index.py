@@ -7,10 +7,14 @@ import ydb
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 YDB_URL = os.getenv('YDB_URL')
 YDB_DATABASE = os.getenv('YDB_DATABASE')
+API_GW_URL = os.getenv("API_GW_URL")
 
 
 START_MESSAGE = """Используйте команду /getface, чтобы получить фотографию лица без имени. Отправьте в ответ имя, чтобы сохранить его. Используйте /find {name}, чтобы найти нужную фотографию по имени."""
 NAME_SET_MESSAGE = """Имя установлено."""
+NO_UNNAMED_FACES_MESSAGE = """Нет неименованных фотографий."""
+NO_FACES_FOUND_MESSAGE = """Нет фотографий с таким именем."""
+SEND_NAME_MESSAGE = """Отправьте имя для этой фотографии."""
 UNKNOWN_COMMAND_MESSAGE = """Я принимаю только команды: /getface и /find {name}."""
 UNKNOWN_REQUEST_MESSAGE = """Я принимаю только текстовые сообщения."""
 USER_STATE_DEFAULT = "DEFAULT"
@@ -33,7 +37,7 @@ def execute_query(query):
 
 
 def get_user_state(chat_id):
-    result = execute_query(f"SELECT state FROM user_states WHERE chat_id = '{chat_id}'")
+    result = execute_query(f"SELECT state FROM user_states WHERE chat_id = '{chat_id}' LIMIT 1")
     if len(result[0].rows) == 0:
         return USER_STATE_DEFAULT
     return result[0].rows[0].state.decode('utf-8')
@@ -47,10 +51,17 @@ def set_user_state(chat_id, state, last_face_key=None):
 
 
 def get_last_face(chat_id):
-    result = execute_query(f"SELECT last_face_key FROM user_states WHERE chat_id = '{chat_id}'")
+    result = execute_query(f"SELECT last_face_key FROM user_states WHERE chat_id = '{chat_id}' LIMIT 1")
     if len(result[0].rows) == 0:
         return None
     return result[0].rows[0].last_face_key.decode('utf-8')
+
+
+def get_unnamed_face():
+    result = execute_query(f"SELECT face_key FROM faces WHERE name is NULL LIMIT 1")
+    if len(result[0].rows) == 0:
+        return None
+    return result[0].rows[0].face_key.decode('utf-8')
 
 
 def set_face_name(face_key, name):
@@ -63,7 +74,11 @@ def is_setting_name(chat_id):
 # telegram
 
 def send_message(chat_id, message):
-    requests.get(f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage?&chat_id={chat_id}&text={message}')
+    requests.post(f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage?chat_id={chat_id}&text={message}')
+
+
+def send_photo(chat_id, image_url, caption=""):
+    requests.post(f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto?chat_id={chat_id}&photo={image_url}&caption={caption}')
 
 
 def start_command(chat_id):
@@ -72,9 +87,14 @@ def start_command(chat_id):
 
 
 def get_face_command(chat_id):
-    face_key = "face_123.jpg"
+    face_key = get_unnamed_face()
+    if not face_key:
+        send_message(chat_id, NO_UNNAMED_FACES_MESSAGE)
+        return
     set_user_state(chat_id, USER_STATE_SETTING_NAME, face_key)
-    send_message(chat_id, "Отправьте имя для этого лица:")
+
+    face_url = f"{API_GW_URL}?face={face_key}"
+    send_photo(chat_id, face_url, caption=SEND_NAME_MESSAGE)
 
 
 def set_name(chat_id, name):

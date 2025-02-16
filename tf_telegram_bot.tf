@@ -5,7 +5,7 @@ resource "archive_file" "zip-bot" {
 }
 
 resource "yandex_function" "telegram-bot" {
-  name               = "vvot33-task2-telegram-bot"
+  name               = var.function_telegram_bot_name
   runtime            = "python312"
   entrypoint         = "index.handler"
   memory             = 128
@@ -17,6 +17,7 @@ resource "yandex_function" "telegram-bot" {
     TELEGRAM_BOT_TOKEN  = var.tg_bot_key
     YDB_URL             = "grpcs://${yandex_ydb_database_serverless.db-photo-face.ydb_api_endpoint}"
     YDB_DATABASE        = yandex_ydb_database_serverless.db-photo-face.database_path
+    API_GW_URL          = yandex_api_gateway.faces-api-gateway.domain
   }
 
   content {

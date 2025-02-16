@@ -20,7 +20,7 @@ def detect_faces(image):
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-    return [{"x": int(x), "y": int(y), "w": int(w), "h": int(h)} for (x, y, w, h) in faces]
+    return [{"num": i, "x": int(x), "y": int(y), "w": int(w), "h": int(h)} for (i, (x, y, w, h)) in enumerate(faces)]
 
 
 def send_message(queue_url, message_body):

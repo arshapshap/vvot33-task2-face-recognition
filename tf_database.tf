@@ -12,7 +12,7 @@ resource "yandex_ydb_database_serverless" "db-photo-face" {
 
 
 resource "yandex_ydb_table" "user_states" {
-  path              = "user_states"
+  path              = var.table_user_states_name
   connection_string = yandex_ydb_database_serverless.db-photo-face.ydb_full_endpoint
 
   column {
@@ -38,7 +38,7 @@ resource "yandex_ydb_table" "user_states" {
 
 
 resource "yandex_ydb_table" "faces" {
-  path              = "faces"
+  path              = var.table_faces_name
   connection_string = yandex_ydb_database_serverless.db-photo-face.ydb_full_endpoint
 
   column {

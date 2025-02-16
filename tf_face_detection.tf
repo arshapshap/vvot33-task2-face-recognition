@@ -4,27 +4,23 @@ resource "yandex_iam_service_account_static_access_key" "sa-static-key" {
 }
 
 resource "yandex_storage_bucket" "photos" {
-  bucket = "${var.prefix}-photos"
+  bucket = var.bucket_photos_name
   acl    = "private"
 }
 
-# resource "yandex_storage_bucket" "faces" {
-#   bucket = "${var.prefix}-faces"
-#   acl    = "private"
-# }
-
 resource "yandex_message_queue" "tasks" {
-  name              = "${var.prefix}-tasks"
+  name              = var.queue_tasks_name
   access_key        = yandex_iam_service_account_static_access_key.sa-static-key.access_key
   secret_key        = yandex_iam_service_account_static_access_key.sa-static-key.secret_key
 }
 
 resource "yandex_function_trigger" "photo-trigger" {
-  name = "${var.prefix}-photo"
+  name = var.trigger_photo_name
   object_storage {
     bucket_id       = yandex_storage_bucket.photos.id
     create          = true
-    batch_cutoff    = 2
+    batch_cutoff    = 0
+    batch_size      = 1
   }
   function {
     id                  = yandex_function.face-detection.id
@@ -32,52 +28,14 @@ resource "yandex_function_trigger" "photo-trigger" {
   }
 }
 
-# resource "yandex_function_trigger" "task-trigger" {
-#   name = "${var.prefix}-task"
-#   message_queue {
-#     queue_id   = yandex_message_queue.tasks.arn
-#     batch_size = 1
-#   }
-#   function {
-#     id = yandex_function.face-cut.id
-#   }
-# }
-
-# resource "yandex_api_gateway" "apigw" {
-#   name = "${var.prefix}-apigw"
-#   spec = <<-EOT
-#     openapi: 3.0.0
-#     info:
-#       title: Faces API
-#     paths:
-#       /:
-#         get:
-#           parameters:
-#             - name: face
-#               in: query
-#               required: true
-#           x-yc-apigateway-integration:
-#             type: object_storage
-#             bucket: ${yandex_storage_bucket.faces.bucket}
-#             object: "{face}"
-#             presigned_redirect: true
-#   EOT
-# }
-
 resource "archive_file" "zip-face-detection" {
   type          = "zip"
   source_dir    = "face_detection"
   output_path   = "face_detection.zip"
 }
 
-# resource "archive_file" "zip-source-cut" {
-#   type          = "zip"
-#   source_dir    = "source_cut"
-#   output_path   = "source_cut.zip"
-# }
-
 resource "yandex_function" "face-detection" {
-  name                  = "${var.prefix}-face-detection"
+  name                  = var.function_face_detection_name
   runtime               = "python312"
   entrypoint            = "index.handler"
   user_hash             = "sha256:${filemd5("face_detection.zip")}"
@@ -94,7 +52,7 @@ resource "yandex_function" "face-detection" {
     zip_filename = "face_detection.zip"
   }
   mounts {
-    name = "${var.prefix}-photos"
+    name = var.bucket_photos_name
     mode = "ro"
     object_storage {
       bucket = yandex_storage_bucket.photos.bucket
@@ -102,17 +60,3 @@ resource "yandex_function" "face-detection" {
   }
   depends_on = [archive_file.zip-face-detection]
 }
-
-# resource "yandex_function" "face-cut" {
-#   name              = "${var.prefix}-face-cut"
-#   runtime           = "python313"
-#   entrypoint        = "index.handler"
-#   memory            = 512
-#   execution_timeout = 20
-#   environment = {
-#     FACES_BUCKET = yandex_storage_bucket.faces.bucket
-#   }
-#   content {
-#     zip_filename = "source_cut.zip"
-#   }
-# }
