@@ -7,10 +7,10 @@ resource "archive_file" "zip-source-bot" {
 resource "yandex_function" "telegram-bot" {
   name               = "vvot33-task2-telegram-bot"
   runtime            = "python312"
-  entrypoint         = "bot.handler"
+  entrypoint         = "index.handler"
   memory             = 128
   execution_timeout  = 20
-  user_hash          = "hash"
+  user_hash          = "sha256:${filemd5("source_bot.zip")}"
   service_account_id = var.service_account_id
 
   environment = {
