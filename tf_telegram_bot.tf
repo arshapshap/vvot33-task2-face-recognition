@@ -1,7 +1,7 @@
-resource "archive_file" "zip-source-bot" {
+resource "archive_file" "zip-bot" {
   type          = "zip"
-  source_dir    = "source_bot"
-  output_path   = "source_bot.zip"
+  source_dir    = "bot"
+  output_path   = "bot.zip"
 }
 
 resource "yandex_function" "telegram-bot" {
@@ -10,7 +10,7 @@ resource "yandex_function" "telegram-bot" {
   entrypoint         = "index.handler"
   memory             = 128
   execution_timeout  = 20
-  user_hash          = "sha256:${filemd5("source_bot.zip")}"
+  user_hash          = "sha256:${filemd5("bot.zip")}"
   service_account_id = var.service_account_id
 
   environment = {
@@ -20,10 +20,10 @@ resource "yandex_function" "telegram-bot" {
   }
 
   content {
-    zip_filename = "source_bot.zip"
+    zip_filename = "bot.zip"
   }
 
-  depends_on = [archive_file.zip-source-bot, yandex_ydb_database_serverless.db-photo-face]
+  depends_on = [archive_file.zip-bot, yandex_ydb_database_serverless.db-photo-face]
 }
 
 resource "yandex_api_gateway" "tg-api-gateway" {

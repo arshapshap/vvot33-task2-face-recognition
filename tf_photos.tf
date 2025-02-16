@@ -64,10 +64,10 @@ resource "yandex_function_trigger" "photo-trigger" {
 #   EOT
 # }
 
-resource "archive_file" "zip-source-detection" {
+resource "archive_file" "zip-face-detection" {
   type          = "zip"
-  source_dir    = "source_detection"
-  output_path   = "source_detection.zip"
+  source_dir    = "face_detection"
+  output_path   = "face_detection.zip"
 }
 
 # resource "archive_file" "zip-source-cut" {
@@ -80,7 +80,7 @@ resource "yandex_function" "face-detection" {
   name                  = "${var.prefix}-face-detection"
   runtime               = "python312"
   entrypoint            = "index.handler"
-  user_hash             = "sha256:${filemd5("source_detection.zip")}"
+  user_hash             = "sha256:${filemd5("face_detection.zip")}"
   memory                = 512
   execution_timeout     = 20
   service_account_id    = var.service_account_id
@@ -91,7 +91,7 @@ resource "yandex_function" "face-detection" {
     AWS_SECRET_ACCESS_KEY   = yandex_iam_service_account_static_access_key.sa-static-key.secret_key
   }
   content {
-    zip_filename = "source_detection.zip"
+    zip_filename = "face_detection.zip"
   }
   mounts {
     name = "${var.prefix}-photos"
@@ -100,7 +100,7 @@ resource "yandex_function" "face-detection" {
       bucket = yandex_storage_bucket.photos.bucket
     }
   }
-  depends_on = [archive_file.zip-source-detection]
+  depends_on = [archive_file.zip-face-detection]
 }
 
 # resource "yandex_function" "face-cut" {
