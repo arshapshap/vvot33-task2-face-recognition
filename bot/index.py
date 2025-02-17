@@ -70,10 +70,10 @@ def set_face_name(face_key, name):
 
 
 def find_face(name):
-    result = execute_query(f"SELECT face_key FROM faces WHERE name = '{name}' LIMIT 1")
+    result = execute_query(f"SELECT face_key FROM faces WHERE name = '{name}' LIMIT 10")
     if len(result[0].rows) == 0:
         return None
-    return result[0].rows[0].face_key.decode('utf-8')
+    return [row.face_key.decode('utf-8') for row in result[0].rows]
 
 
 def is_setting_name(chat_id):
@@ -87,6 +87,10 @@ def send_message(chat_id, message):
 
 def send_photo(chat_id, image_url, caption=""):
     requests.post(f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto?chat_id={chat_id}&photo={image_url}&caption={caption}')
+
+
+def get_face_url(face_key):
+    return f"{API_GW_URL}?face={face_key}"
 
 
 def start_command(chat_id):
@@ -111,12 +115,17 @@ def cancel_command(chat_id):
 
 
 def find_face_command(chat_id, name):
-    face_key = find_face(name.lower())
-    if not face_key:
+    face_keys = find_face(name.lower())
+    if len(face_keys) == 0:
         send_message(chat_id, NO_FACES_FOUND_MESSAGE)
-        return
-    face_url = f"{API_GW_URL}?face={face_key}"
-    send_photo(chat_id, face_url, caption=f"Найдено по имени \"{name}\".")
+    elif len(face_keys) == 1:
+        face_url = get_face_url(face_keys[0])
+        send_photo(chat_id, face_url, caption=f"Найдено по имени \"{name}\".")
+    elif len(face_keys) > 1:
+        send_message(chat_id, f"Найдено несколько фотографий с именем \"{name}\":")
+        for face_key in face_keys:
+            face_url = get_face_url(face_key)
+            send_photo(chat_id, face_url)
 
 
 def set_name(chat_id, name):
