@@ -13,12 +13,20 @@ resource "yandex_function" "face-image-api" {
   service_account_id    = var.service_account_id
   user_hash             = "sha256:${archive_file.zip-face-image-api.output_base64sha256}"
   environment = {
+    PHOTOS_BUCKET         = yandex_storage_bucket.photos.bucket
     FACES_BUCKET          = yandex_storage_bucket.faces.bucket
     AWS_ACCESS_KEY_ID     = yandex_iam_service_account_static_access_key.sa-static-key.access_key
     AWS_SECRET_ACCESS_KEY = yandex_iam_service_account_static_access_key.sa-static-key.secret_key
   }
   content {
     zip_filename = "face_image_api.zip"
+  }
+  mounts {
+    name = var.bucket_photos_name
+    mode = "ro"
+    object_storage {
+      bucket = yandex_storage_bucket.photos.bucket
+    }
   }
   mounts {
     name = var.bucket_faces_name
@@ -43,7 +51,12 @@ resource "yandex_api_gateway" "faces-api-gateway" {
           parameters:
             - name: face
               in: query
-              required: true
+              required: false
+              schema:
+                type: string
+            - name: photo
+              in: query
+              required: false
               schema:
                 type: string
           x-yc-apigateway-integration:

@@ -10,11 +10,9 @@ YDB_DATABASE = os.getenv('YDB_DATABASE')
 API_GW_URL = os.getenv("API_GW_URL")
 
 
-START_MESSAGE = """Используйте команду /getface, чтобы получить фотографию лица без имени. Отправьте в ответ имя, чтобы сохранить его. Используйте /find {name}, чтобы найти фотографию по имени."""
-NAME_SET_MESSAGE = """Установлено имя"""
-NO_UNNAMED_FACES_MESSAGE = """Нет неименованных фотографий."""
-NO_FACES_FOUND_MESSAGE = """Нет фотографий с таким именем."""
-SEND_NAME_MESSAGE = """Выберите имя для этой фотографии или отправьте команду /cancel, чтобы отменить выбор имени."""
+START_MESSAGE = """Используйте команду /getface, чтобы получить фотографию лица без имени. Отправьте в ответ имя, чтобы сохранить его. Используйте /find {name}, чтобы найти фотографию с нужным лицом."""
+NO_UNNAMED_FACES_MESSAGE = """Нет неименованных лиц."""
+SEND_NAME_MESSAGE = """Выберите имя для этого лица или отправьте команду /cancel, чтобы отменить выбор имени."""
 CANCEL_MESSAGE = """Отмена выбора имени."""
 UNKNOWN_COMMAND_MESSAGE = """Я принимаю только команды: /getface и /find {name}."""
 UNKNOWN_REQUEST_MESSAGE = """Я принимаю только текстовые сообщения."""
@@ -70,10 +68,10 @@ def set_face_name(face_key, name):
 
 
 def find_face(name):
-    result = execute_query(f"SELECT face_key FROM faces WHERE name = '{name}' LIMIT 10")
+    result = execute_query(f"SELECT photo_key FROM faces WHERE name = '{name}' LIMIT 10")
     if len(result[0].rows) == 0:
         return None
-    return [row.face_key.decode('utf-8') for row in result[0].rows]
+    return list(set([row.photo_key.decode('utf-8') for row in result[0].rows]))
 
 
 def is_setting_name(chat_id):
@@ -93,8 +91,12 @@ def get_face_url(face_key):
     return f"{API_GW_URL}?face={face_key}"
 
 
+def get_photo_url(photo_key):
+    return f"{API_GW_URL}?photo={photo_key}"
+
+
 def start_command(chat_id):
-    set_user_state(chat_id, "DEFAULT")
+    set_user_state(chat_id, USER_STATE_DEFAULT)
     send_message(chat_id, START_MESSAGE)
 
 
@@ -105,35 +107,35 @@ def get_face_command(chat_id):
         return
     set_user_state(chat_id, USER_STATE_SETTING_NAME, face_key)
 
-    face_url = f"{API_GW_URL}?face={face_key}"
+    face_url = get_face_url(face_key)
     send_photo(chat_id, face_url, caption=SEND_NAME_MESSAGE)
 
 
 def cancel_command(chat_id):
-    set_user_state(chat_id, "DEFAULT")
+    set_user_state(chat_id, USER_STATE_DEFAULT)
     send_message(chat_id, CANCEL_MESSAGE)
 
 
 def find_face_command(chat_id, name):
-    face_keys = find_face(name.lower())
-    if len(face_keys) == 0:
-        send_message(chat_id, NO_FACES_FOUND_MESSAGE)
-    elif len(face_keys) == 1:
-        face_url = get_face_url(face_keys[0])
-        send_photo(chat_id, face_url, caption=f"Найдено по имени \"{name}\".")
-    elif len(face_keys) > 1:
-        send_message(chat_id, f"Найдено несколько фотографий с именем \"{name}\":")
-        for face_key in face_keys:
-            face_url = get_face_url(face_key)
-            send_photo(chat_id, face_url)
+    photo_keys = find_face(name.lower())
+    if len(photo_keys) == 0:
+        send_message(chat_id, f"Нет фотографий с \"{name}\".")
+    elif len(photo_keys) == 1:
+        photo_url = get_photo_url(photo_keys[0])
+        send_photo(chat_id, photo_url, caption=f"Найдена одна фотография с \"{name}\".")
+    elif len(photo_keys) > 1:
+        send_message(chat_id, f"Найдено несколько фотографий с \"{name}\":")
+        for photo_key in photo_keys:
+            photo_url = get_photo_url(photo_key)
+            send_photo(chat_id, photo_url)
 
 
 def set_name(chat_id, name):
     face_key = get_last_face(chat_id)
     if face_key:
         set_face_name(face_key, name.lower())
-        send_message(chat_id, f"{NAME_SET_MESSAGE}: {name}.")
-    set_user_state(chat_id, "DEFAULT")
+        send_message(chat_id, f"Установлено имя: {name}.")
+    set_user_state(chat_id, USER_STATE_DEFAULT)
 
 
 def handle_message(chat_id, message):
@@ -144,7 +146,7 @@ def handle_message(chat_id, message):
                 start_command(chat_id)
             case "/getface" if not is_setting_name(chat_id):
                 get_face_command(chat_id)
-            case s if s.startswith('/find') and not is_setting_name(chat_id):
+            case s if s.startswith('/find ') and not is_setting_name(chat_id):
                 find_face_command(chat_id, ' '.join(text.split(' ')[1:]))
             case "/cancel" if is_setting_name(chat_id):
                 cancel_command(chat_id)

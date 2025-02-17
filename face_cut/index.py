@@ -1,5 +1,6 @@
 import json
 import os
+import uuid
 import ydb
 from PIL import Image
 
@@ -23,8 +24,8 @@ def execute_query(query):
     return pool.retry_operation_sync(lambda session: session.transaction().execute(query, commit_tx=True))
 
 
-def add_face_to_db(face_key):
-    execute_query(f"INSERT INTO faces (face_key) VALUES ('{face_key}')")
+def add_face_to_db(face_key, photo_key):
+    execute_query(f"INSERT INTO faces (face_key, photo_key) VALUES ('{face_key}', '{photo_key}')")
 
 
 def download_photo(key):
@@ -44,6 +45,7 @@ def handler(event, context):
     face_image = crop_image(image, face)
 
     photo_key_without_extension = photo_key.split(".")[0]
-    face_key = f"{photo_key_without_extension}_{face["num"]}.jpg"
+    random_key = str(uuid.uuid4())
+    face_key = f"{photo_key_without_extension}_{face["num"]}_{random_key}.jpg"
     face_image.save(f"/function/storage/{FACES_BUCKET}/{face_key}")
-    add_face_to_db(face_key)
+    add_face_to_db(face_key, photo_key)

@@ -48,6 +48,12 @@ resource "yandex_ydb_table" "faces" {
   }
 
   column {
+    name     = "photo_key"
+    type     = "String"
+    not_null = true
+  }
+
+  column {
     name     = "name"
     type     = "String"
     not_null = false
