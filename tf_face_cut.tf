@@ -27,7 +27,7 @@ resource "yandex_function" "face-cut" {
   name                  = var.function_face_cut_name
   runtime               = "python312"
   entrypoint            = "index.handler"
-  user_hash             = "sha256:${filemd5("face_cut.zip")}"
+  user_hash             = "sha256:${archive_file.zip-face-cut.output_base64sha256}"
   memory                = 512
   execution_timeout     = 20
   service_account_id    = var.service_account_id

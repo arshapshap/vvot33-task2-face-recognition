@@ -10,7 +10,7 @@ resource "yandex_function" "telegram-bot" {
   entrypoint         = "index.handler"
   memory             = 128
   execution_timeout  = 20
-  user_hash          = "sha256:${filemd5("bot.zip")}"
+  user_hash          = "sha256:${archive_file.zip-bot.output_base64sha256}"
   service_account_id = var.service_account_id
 
   environment = {

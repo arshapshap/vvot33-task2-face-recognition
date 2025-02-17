@@ -11,7 +11,7 @@ resource "yandex_function" "face-image-api" {
   memory                = 128
   execution_timeout     = 10
   service_account_id    = var.service_account_id
-  user_hash             = "sha256:${filemd5("face_image_api.zip")}"
+  user_hash             = "sha256:${archive_file.zip-face-image-api.output_base64sha256}"
   environment = {
     FACES_BUCKET          = yandex_storage_bucket.faces.bucket
     AWS_ACCESS_KEY_ID     = yandex_iam_service_account_static_access_key.sa-static-key.access_key
